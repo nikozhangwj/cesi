@@ -1,11 +1,31 @@
 from flask import Blueprint, jsonify, session, request, g
-
+from flask_httpauth import HTTPBasicAuth
 from decorators import is_user_logged_in, is_admin
 from loggers import ActivityLog
-from models import User
+from models import User, token_config
 
 auth = Blueprint("auth", __name__)
+api_auth = HTTPBasicAuth()
 activity = ActivityLog.getInstance()
+
+
+@auth.route("/token/", methods=["GET"])
+@api_auth.login_required
+def get_auth_token():
+    expiration = token_config['TOKEN_EXPIRATION']
+    token = g.user.generate_auth_token(expiration=expiration)
+    return jsonify({'token': token.decode('ascii'), 'duration': expiration})
+
+
+@api_auth.verify_password
+def verify_password(username_or_token, password):
+    user = User.verify_auth_token(username_or_token)
+    if not user:
+        user = User.query.filter_by(username=username_or_token).first()
+        if not user or not user.verify_password(password):
+            return False
+    g.user = user
+    return True
 
 
 @auth.route("/login/", methods=["POST"])

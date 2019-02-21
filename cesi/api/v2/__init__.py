@@ -11,6 +11,7 @@ def register_blueprints(app):
     #   from blueprints.nodes.routes import nodes
     #   app.register_blueprint(nodes, url_prefix="/{}/nodes".format(API_VERSION))
     blueprint_names = [
+        "node",
         "nodes",
         "activitylogs",
         "environments",

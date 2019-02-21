@@ -1,5 +1,10 @@
 from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from itsdangerous import SignatureExpired, BadSignature
 from run import db
+
+# 设置TOKEN密钥和过期时间
+token_config = {'TOKEN_EXPIRATION': 6000, 'SECRET': 'you never guess'}
 
 
 class User(db.Model):
@@ -47,3 +52,19 @@ class User(db.Model):
         user = User.query.filter_by(username=username).first_or_404()
         db.session.delete(user)
         db.session.commit()
+
+    def generate_auth_token(self, expiration=600):
+        s = Serializer(token_config['SECRET'], expires_in=expiration)
+        return s.dumps({'id': self.id})
+
+    @staticmethod
+    def verify_auth_token(token):
+        s = Serializer(token_config['SECRET'])
+        try:
+            data = s.loads(token)
+        except SignatureExpired:
+            return None  # valid token, but expired
+        except BadSignature:
+            return None  # invalid token
+        user = User.query.get(data['id'])
+        return user
